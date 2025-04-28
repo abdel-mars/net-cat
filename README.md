@@ -1,108 +1,73 @@
-# 🧵 TCPChat — A Go NetCat-Style Real-Time Chat App
+# TCP-Chat Project
 
-This is a Go network programming project that recreates the core features of the classic **NetCat** tool — but with a **real-time group chat server**.
+This is a simple TCP-based chat application written in Go. It consists of a server and a client program that communicate over TCP sockets.
 
-The project simulates a TCP-based client-server architecture, where one server listens and multiple clients can connect, chat, and disconnect — with specific behaviors and formatting rules.
+## Project Structure
 
----
+- `server/`
+  - `main.go`: The TCP chat server implementation.
+  - `welcome_logo.go`: Contains the ASCII art welcome logo displayed to clients on connection.
+- `client/`
+  - `main.go`: The TCP chat client implementation.
 
-## 🔍 What is This Project?
+## Features
 
-You're building your own version of **NetCat** in **Go**, but with **group chat** functionality.
+- Multiple clients can connect to the server concurrently (up to a maximum limit).
+- Clients are prompted to enter their username upon connection.
+- Messages sent by clients are broadcast to all other connected clients.
+- Clients can quit the chat by typing `/quit`.
+- The server displays a welcome logo when clients connect.
 
-It behaves like a mini real-time chat app over **TCP sockets**.
+## How to Run
 
----
+### Running the Server
 
-## 🧠 Key Concepts You Will Learn
+1. Open a terminal and navigate to the project root directory.
 
-- TCP socket programming in Go.
-- Concurrency using goroutines, channels, or mutexes.
-- Client-server communication via the `net` package.
-- Synchronization and data sharing safely (via `sync.Mutex` or channels).
-- Parsing and formatting messages.
-- Handling user input/output over TCP.
-- Error handling and graceful shutdowns.
-- Managing multiple connections efficiently.
+2. Run the server by including all Go files in the `server` directory:
 
----
+   ```bash
+   go run server/*.go
+   ```
 
-## ✅ Required Features (Detailed)
+   By default, the server listens on port `8989`.
 
-| Feature                | Explanation                                                                 |
-|------------------------|-----------------------------------------------------------------------------|
-| ✅ TCP Server           | Listens on a port (default: `8989`). Accepts up to 10 clients.              |
-| ✅ TCP Clients          | Clients connect to the server and chat. Must provide **non-empty usernames**.|
-| ✅ Message Broadcast    | Every client message is sent to **all connected clients**.                  |
-| ✅ Time and User Tags   | Format: `[2025-04-24 12:00:00][Mars]: Hello world!`                         |
-| ✅ Historical Messages  | When a new client joins, they receive all previous chat history.            |
-| ✅ Join/Leave Notice    | Server announces when users join/leave.                                     |
-| ✅ Linux-style Welcome  | Server greets new users with a Linux ASCII logo and a username prompt.      |
-| ✅ Connection Limit     | Limit to **10 clients max**. Enforced by server logic.                      |
-| ✅ Usage Validation     | Default port `8989`. If more than one argument: print `[USAGE]: ./TCPChat $port`|
+3. To specify a custom port, pass it as an argument:
 
----
+   ```bash
+   go run server/*.go 12345
+   ```
 
-## 🛠 Tools You Can Use
+### Running the Client
 
-Only these Go packages are allowed:
+1. Open another terminal and navigate to the project root directory.
 
-io, log, os, fmt, net, sync, time, bufio, errors, strings, reflect
+2. Run the client with the server IP and port as arguments:
 
+   ```bash
+   go run client/main.go <server-ip> <server-port>
+   ```
 
----
+   For example, if the server is running locally on port 8989:
 
-## 🧪 Bonus Features (Optional but Impressive)
+   ```bash
+   go run client/main.go localhost 8989
+   ```
 
-- 🎨 Terminal UI using [`gocui`](https://github.com/jroimartin/gocui)
-- 💾 Save chat logs to a file
-- 💬 Multiple group chats by port/identifier
+3. When prompted, enter your username to join the chat.
 
----
+4. Type messages and press Enter to send them. Type `/quit` to exit.
 
-## ⏳ Time Estimation Breakdown
+## Notes
 
-| Task                                             | Estimated Time        |
-|--------------------------------------------------|------------------------|
-| ✅ Set up server, listen on port                 | 1–2 hours              |
-| ✅ Handle incoming client connections            | 2–3 hours              |
-| ✅ Client name entry + validation                | 1 hour                 |
-| ✅ Broadcast messages to all clients             | 2–3 hours              |
-| ✅ Message formatting (timestamp + username)     | 1 hour                 |
-| ✅ Message history for new clients               | 2–3 hours              |
-| ✅ Join/leave notifications                      | 1 hour                 |
-| ✅ Error handling + disconnects                  | 2 hours                |
-| ✅ Connection limit (10 max)                     | 1 hour                 |
-| ✅ Argument handling & usage message             | 30 min                 |
-| 🧪 Optional: Terminal UI with gocui              | 4–6 hours              |
-| 🧪 Optional: Save logs to file                   | 1–2 hours              |
-| 🧪 Optional: Support multiple chat rooms         | 3–5 hours              |
+- The server limits the number of concurrent clients to 10.
+- The client and server communicate using simple text messages over TCP.
+- The welcome logo is displayed to clients upon connection.
 
-**Total Time (Core Features Only):** 14–18 hours  
-**With Bonuses:** 20–30 hours
+## Dependencies
 
----
+- Go programming language (version 1.16 or higher recommended).
 
-## 🧠 Development Tips
+## License
 
-- Use a `Client` struct to store each user's connection and metadata.
-- Track active users using `map[string]*Client` or a `[]*Client`.
-- Store chat history in a `[]string` or via buffered channels.
-- Use `sync.Mutex` or Go channels to safely access shared resources.
-- Don’t forget to flush `bufio.Writer` when writing responses.
-
----
-
-## 💡 Example Architecture
-
-```go
-type Client struct {
-    name string
-    conn net.Conn
-    msg  chan string
-}
-
-var clients map[string]*Client // Active connected users
-var messages []string          // Chat history
-
-// Use goroutines, channels, and mutexes to manage concurrent access
+This project is open source and free to use.
