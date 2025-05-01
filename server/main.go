@@ -140,30 +140,39 @@ func handleConnection(conn net.Conn) {
 	broadcast(fmt.Sprintf("%s has left our chat...", client.name), "")
 }
 
-// readName reads a client's name from the provided connection.
-// It continuously prompts the client until a non-empty name is provided.
 func readName(conn net.Conn) (string, error) {
-	// Create a buffered reader from the connection.
 	reader := bufio.NewReader(conn)
 
-	// Continuously read the client's name until a valid name is provided.
 	for {
-		// Read the client's name.
 		name, err := reader.ReadString('\n')
 		if err != nil {
 			return "", err
 		}
 
-		// Trim any whitespace characters from the name.
 		name = strings.TrimSpace(name)
 
-		// If the name is not empty, return it.
-		if name != "" {
-			return name, nil
+		if name == "" {
+			conn.Write([]byte("[ENTER YOUR NAME]:"))
+			continue
 		}
 
-		// Prompt the client to enter their name again since the name is empty.
-		conn.Write([]byte("[ENTER YOUR NAME]:\n"))
+		// Check if the name is already taken
+		mutex.Lock()
+		nameTaken := false
+		for _, client := range clients {
+			if client.name == name {
+				nameTaken = true
+				break
+			}
+		}
+		mutex.Unlock()
+
+		if nameTaken {
+			conn.Write([]byte("[NAME ALREADY TAKEN] \n[ENTER YOUR NAME]: "))
+			continue
+		}
+
+		return name, nil
 	}
 }
 
@@ -180,7 +189,7 @@ func broadcast(message, senderName string) {
 		formatted = message
 	} else {
 		// Format the message with the sender's name and current time.
-		formatted = fmt.Sprintf("[%s][%s]: %s", time.Now().Format("2006-01-02 15:04:05"), senderName, message)
+		formatted = fmt.Sprintf("[%s][%s]:%s", time.Now().Format("2006-01-02 15:04:05"), senderName, message)
 		// Store the formatted message in the messages slice for later use.
 		messages = append(messages, formatted)
 	}

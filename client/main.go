@@ -40,21 +40,38 @@ func main() {
 	}
 	fmt.Print(welcomeMsg)
 
-	// Read the user's name from standard input
-	name, _ := stdinReader.ReadString('\n')
-	name = strings.TrimSpace(name)
+	// Loop to read and send the user's name until accepted by the server
+	for {
+		name, _ := stdinReader.ReadString('\n')
+		name = strings.TrimSpace(name)
 
-	// Ensure the name is not empty
-	if name == "" {
-		fmt.Println("Name cannot be empty. Exiting...")
-		return
-	}
+		if name == "" {
+			fmt.Println("[NAME CANNOT BE EMPTY] \n [ENTER YOUR NAME]:")
+			continue
+		}
 
-	// Send the user's name to the server
-	_, err = conn.Write([]byte(name + "\n"))
-	if err != nil {
-		fmt.Println("Error sending name:", err)
-		return
+		_, err = conn.Write([]byte(name + "\n"))
+		if err != nil {
+			fmt.Println("Error sending name:", err)
+			return
+		}
+
+		// Read server response after sending name
+		response, err := serverReader.ReadString('\n')
+		if err != nil {
+			fmt.Println("Disconnected from server.")
+			return
+		}
+
+		// If server says name is taken, prompt again
+		if strings.Contains(response, "[NAME ALREADY TAKEN]") {
+			fmt.Print(response)
+			continue
+		}
+
+		// Otherwise, print the server response and break the loop
+		fmt.Print(response)
+		break
 	}
 
 	// Goroutine to constantly listen for messages from the server
@@ -71,7 +88,7 @@ func main() {
 
 	// Main loop to read user input and send messages to the server
 	for {
-		fmt.Print("You: ")
+		// fmt.Print("You: ")
 		msg, _ := stdinReader.ReadString('\n')
 		msg = strings.TrimSpace(msg)
 
