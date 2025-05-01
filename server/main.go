@@ -78,11 +78,9 @@ func getPort() (string, error) {
 	// No port provided, return the default port.
 	if len(args) == 0 {
 		return defaultPort, nil
-	}
-
+	}	
 	// One argument provided, validate if it's a valid integer port.
 	if len(args) == 1 {
-		} else if len(args) == 1 {
 			_, err := strconv.Atoi(args[0])
 			if err != nil {
 				return "", fmt.Errorf("[USAGE]: ./server $port")
