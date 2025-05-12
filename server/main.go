@@ -54,16 +54,6 @@ func main() {
 			continue
 		}
 
-		// Check if we have reached the maximum number of clients.
-		mutex.Lock()
-		if len(clients) >= maxClients {
-			conn.Write([]byte("Server full. Try again later.\n"))
-			conn.Close()
-			mutex.Unlock()
-			continue
-		}
-		mutex.Unlock()
-
 		// Handle the connection in a separate goroutine.
 		go handleConnection(conn)
 	}
@@ -106,6 +96,15 @@ func handleConnection(conn net.Conn) {
 		return
 	}
 
+	// Added maxClients check here after username is provided
+	mutex.Lock()
+	if len(clients) >= maxClients {
+		conn.Write([]byte("Server full. Try again later.\n"))
+		mutex.Unlock()
+		return
+	}
+	mutex.Unlock()
+
 	// Create a new Client instance.
 	client := &Client{conn: conn, name: name}
 
@@ -127,6 +126,12 @@ func handleConnection(conn net.Conn) {
 		if text == "" {
 			continue // Ignore empty messages.
 		}
+
+		if !isPrintableASCII(text) {
+			conn.Write([]byte("[MESSAGE MUST CONTAIN ONLY PRINTABLE ASCII CHARACTERS]\n"))
+			continue
+		}
+
 		// Broadcast the received message to all clients.
 		broadcast(text, client.name)
 	}
@@ -138,6 +143,15 @@ func handleConnection(conn net.Conn) {
 
 	// Announce the client's departure to all connected clients.
 	broadcast(fmt.Sprintf("%s has left our chat...", client.name), "")
+}
+
+func isPrintableASCII(s string) bool {
+	for _, r := range s {
+		if r < 32 || r > 127 {
+			return false
+		}
+	}
+	return true
 }
 
 func readName(conn net.Conn) (string, error) {
@@ -153,6 +167,11 @@ func readName(conn net.Conn) (string, error) {
 
 		if name == "" {
 			conn.Write([]byte("[ENTER YOUR NAME]:"))
+			continue
+		}
+
+		if !isPrintableASCII(name) {
+			conn.Write([]byte("[NAME MUST CONTAIN ONLY PRINTABLE ASCII CHARACTERS] \n[ENTER YOUR NAME]: "))
 			continue
 		}
 
