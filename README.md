@@ -98,3 +98,5 @@ This is a simple TCP-based chat application written in Go. It consists of a serv
 
 
 - [El Mahmoudi Abderrahman] - Initial development
+- [oussama erraoui] - Initial development
+- [Yassine Bouhadi] - Initial development
