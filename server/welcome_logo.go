@@ -17,4 +17,4 @@ var welcomeLogo = "Welcome to TCP-Chat!\n" +
 	"_)      \\.___.,|     .'\n" +
 	"\\____   )MMMMMP|   .'\n" +
 	"     `-'       `--'\n" +
-	"[ENTER YOUR NAME]:"
+	"[ENTER YOUR NAME]: "
