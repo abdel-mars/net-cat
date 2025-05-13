@@ -198,27 +198,37 @@ func readName(conn net.Conn) (string, error) {
 // broadcast sends the provided message to all connected clients.
 // If the senderName is empty, it sends the message as a server message.
 // Otherwise, it formats the message with the sender's name and current time.
+// broadcast sends the provided message to all connected clients.
 func broadcast(message, senderName string) {
-	mutex.Lock()
-	defer mutex.Unlock()
+    mutex.Lock()
+    defer mutex.Unlock()
 
-	var formatted string
-	if senderName == "" {
-		// If the senderName is empty, the message is sent as a server message.
-		formatted = message
-	} else {
-		// Format the message with the sender's name and current time.
-		formatted = fmt.Sprintf("[%s][%s]:%s", time.Now().Format("2006-01-02 15:04:05"), senderName, message)
-		// Store the formatted message in the messages slice for later use.
-		messages = append(messages, formatted)
-	}
+    var formatted string
+    if senderName == "" {
+        formatted = message
+    } else {
+        formatted = fmt.Sprintf("[%s][%s]:%s", time.Now().Format("2006-01-02 15:04:05"), senderName, message)
+        messages = append(messages, formatted)
+    }
 
-	// Send the formatted message to all connected clients.
-	for _, client := range clients {
-		fmt.Fprintln(client.conn, formatted)
-	}
+    // Find sender's connection
+    var senderConn net.Conn
+    for conn, client := range clients {
+        if client.name == senderName {
+            senderConn = conn
+            break
+        }
+    }
+
+    // Send message to all clients
+    for conn := range clients {  // Fixed: iterate over connections only
+        if conn == senderConn {
+            fmt.Fprintf(conn, "\033[1A\r\033[K%s\n", formatted)
+        } else {
+            fmt.Fprintln(conn, formatted)
+        }
+    }
 }
-
 // sendHistory sends the chat history to a newly connected client.
 func sendHistory(conn net.Conn) {
 	mutex.Lock()
