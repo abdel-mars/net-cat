@@ -259,9 +259,9 @@ func broadcastSystemMessage(message string) {
 	for conn := range clients {
 		// Clear the current input line and save cursor position
 		conn.Write([]byte("\033[2K\r")) // Clear line and move cursor to start
-		// Print the system message (leave message)
-		fmt.Fprintln(conn, message)
-		// Write the prefix for the input prompt
+		// Print the system message (leave message) without newline
+		conn.Write([]byte(message))
+		// Write the prefix for the input prompt immediately after the message
 		conn.Write([]byte(Prefix(clients[conn].name)))
 		// Flush cursor to the right position for input
 		conn.Write([]byte("\033[K")) // Clear to end of line
@@ -289,9 +289,9 @@ func broadcastSystemMessageExcept(message string, excludeConn net.Conn) {
 		}
 		// Clear the current input line and move cursor to start
 		conn.Write([]byte("\033[2K\r"))
-		// Print the system message
-		fmt.Fprintln(conn, message)
-		// Write the prefix for the input prompt
+		// Print the system message without newline
+		conn.Write([]byte(message))
+		// Write the prefix for the input prompt immediately after the message
 		conn.Write([]byte(Prefix(clients[conn].name)))
 		// Clear to end of line
 		conn.Write([]byte("\033[K"))
