@@ -121,19 +121,27 @@ func handleConnection(conn net.Conn) {
 
 	// Continuously read messages from the client.
 	scanner := bufio.NewScanner(conn)
+	// Write the prefix before reading the first message
+	conn.Write([]byte(Prefix(client.name)))
 	for scanner.Scan() {
 		text := strings.TrimSpace(scanner.Text())
 		if text == "" {
+			// Write the prefix again for empty input
+			conn.Write([]byte(Prefix(client.name)))
 			continue // Ignore empty messages.
 		}
 
 		if !isPrintableASCII(text) {
 			conn.Write([]byte("[MESSAGE MUST CONTAIN ONLY PRINTABLE ASCII CHARACTERS]\n"))
+			// Write the prefix again after error message
+			conn.Write([]byte(Prefix(client.name)))
 			continue
 		}
 
 		// Broadcast the received message to all clients.
 		broadcast(text, client.name)
+		// Write the prefix again after broadcasting
+		conn.Write([]byte(Prefix(client.name)))
 	}
 
 	// Remove the client from the clients map on disconnection.
@@ -199,38 +207,44 @@ func readName(conn net.Conn) (string, error) {
 // If the senderName is empty, it sends the message as a server message.
 // Otherwise, it formats the message with the sender's name and current time.
 // broadcast sends the provided message to all connected clients.
+func Prefix(name string) string {
+	timestamp := time.Now().Format("2006-01-02 15:04:05")
+	return fmt.Sprintf("[%s][%s]:", timestamp, name)
+}
+
 func broadcast(message, senderName string) {
-    mutex.Lock()
-    defer mutex.Unlock()
+	mutex.Lock()
+	defer mutex.Unlock()
 
-    var formatted string
-    if senderName == "" {
-        formatted = message
-    } else {
-        formatted = fmt.Sprintf("[%s][%s]:%s", time.Now().Format("2006-01-02 15:04:05"), senderName, message)
-        messages = append(messages, formatted)
-    }
+	var formatted string
+	if senderName == "" {
+		formatted = message
+	} else {
+		formatted = Prefix(senderName) + message
+		messages = append(messages, formatted)
+	}
 
-    // Find sender's connection
-    var senderConn net.Conn
-    for conn, client := range clients {
-        if client.name == senderName {
-            senderConn = conn
-            break
-        }
-    }
+	// Find sender's connection
+	var senderConn net.Conn
+	for conn, client := range clients {
+		if client.name == senderName {
+			senderConn = conn
+			break
+		}
+	}
 
-    // Send message to all clients
-    for conn := range clients {
-        // Write escape sequences to save cursor, clear line, and restore cursor to fix input line display
-        conn.Write([]byte("\033[s\033[2K\r")) // Clear line and move cursor.
-        if conn == senderConn {
-            fmt.Fprintf(conn, "%s\n", formatted)
-        } else {
-            fmt.Fprintln(conn, formatted)
-        }
-        conn.Write([]byte("\033[u\033[B")) // Restore cursor and move down.
-    }
+	// Send message to all clients except the sender
+	for conn := range clients {
+		if senderConn != nil && conn == senderConn {
+			continue
+		}
+		// Write escape sequences to save cursor, clear line, and restore cursor to fix input line display
+		conn.Write([]byte("\033[s\033[2K\r")) // Clear line and move cursor.
+		fmt.Fprintln(conn, formatted)
+		// Write the prefix after the message for all clients
+		conn.Write([]byte(Prefix(clients[conn].name)))
+		conn.Write([]byte("\033[u\033[B")) // Restore cursor and move down.
+	}
 }
 // sendHistory sends the chat history to a newly connected client.
 func sendHistory(conn net.Conn) {
