@@ -114,15 +114,22 @@ func handleConnection(conn net.Conn) {
 	mutex.Unlock()
 
 	// Announce the new client to all connected clients.
-	broadcast(fmt.Sprintf("\033[32m%s has joined our chat...\033[0m\n", client.name), "")
+	joinMessage := fmt.Sprintf("\033[32m%s has joined our chat...\033[0m\n", client.name)
 
 	// Send the chat history to the newly connected client.
 	sendHistory(conn)
 
+	// Write the join message and prefix separately for the joining client
+	conn.Write([]byte(joinMessage))
+	conn.Write([]byte(Prefix(client.name)))
+
+	// Broadcast the join message to all other clients except the joining client
+	broadcastSystemMessageExcept(joinMessage, client.conn)
+
 	// Continuously read messages from the client.
 	scanner := bufio.NewScanner(conn)
-	// Write the prefix before reading the first message
-	conn.Write([]byte(Prefix(client.name)))
+	// Removed writing prefix here to avoid duplication with join message prompt
+	// conn.Write([]byte(Prefix(client.name)))
 	for scanner.Scan() {
 		text := strings.TrimSpace(scanner.Text())
 		if text == "" {
@@ -150,7 +157,8 @@ func handleConnection(conn net.Conn) {
 	mutex.Unlock()
 
 	// Announce the client's departure to all connected clients.
-	broadcast(fmt.Sprintf("\033[31m%s has left our chat...\033[0m\n", client.name), "")
+	leaveMessage := fmt.Sprintf("\033[31m%s has left our chat...\033[0m\n", client.name)
+	broadcastSystemMessage(leaveMessage)
 }
 
 func isPrintableASCII(s string) bool {
@@ -203,15 +211,6 @@ func readName(conn net.Conn) (string, error) {
 	}
 }
 
-// broadcast sends the provided message to all connected clients.
-// If the senderName is empty, it sends the message as a server message.
-// Otherwise, it formats the message with the sender's name and current time.
-// broadcast sends the provided message to all connected clients.
-func Prefix(name string) string {
-	timestamp := time.Now().Format("2006-01-02 15:04:05")
-	return fmt.Sprintf("[%s][%s]:", timestamp, name)
-}
-
 func broadcast(message, senderName string) {
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -246,6 +245,28 @@ func broadcast(message, senderName string) {
 		conn.Write([]byte("\033[u\033[B")) // Restore cursor and move down.
 	}
 }
+
+func Prefix(name string) string {
+	timestamp := time.Now().Format("2006-01-02 15:04:05")
+	return fmt.Sprintf("[%s][%s]:", timestamp, name)
+}
+
+// broadcastSystemMessage sends a system message to all clients without prefix but with proper cursor handling.
+func broadcastSystemMessage(message string) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	for conn := range clients {
+		// Clear the current input line and save cursor position
+		conn.Write([]byte("\033[2K\r")) // Clear line and move cursor to start
+		// Print the system message (leave message)
+		fmt.Fprintln(conn, message)
+		// Write the prefix for the input prompt
+		conn.Write([]byte(Prefix(clients[conn].name)))
+		// Flush cursor to the right position for input
+		conn.Write([]byte("\033[K")) // Clear to end of line
+	}
+}
 // sendHistory sends the chat history to a newly connected client.
 func sendHistory(conn net.Conn) {
 	mutex.Lock()
@@ -254,5 +275,25 @@ func sendHistory(conn net.Conn) {
 	// Iterate through all the stored messages and send them to the newly connected client.
 	for _, msg := range messages {
 		fmt.Fprintln(conn, msg)
+	}
+}
+
+// broadcastSystemMessageExcept sends a system message to all clients except the excluded connection, without prefix but with proper cursor handling.
+func broadcastSystemMessageExcept(message string, excludeConn net.Conn) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	for conn := range clients {
+		if conn == excludeConn {
+			continue
+		}
+		// Clear the current input line and move cursor to start
+		conn.Write([]byte("\033[2K\r"))
+		// Print the system message
+		fmt.Fprintln(conn, message)
+		// Write the prefix for the input prompt
+		conn.Write([]byte(Prefix(clients[conn].name)))
+		// Clear to end of line
+		conn.Write([]byte("\033[K"))
 	}
 }
