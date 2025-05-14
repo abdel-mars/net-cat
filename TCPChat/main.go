@@ -114,7 +114,7 @@ func handleConnection(conn net.Conn) {
 	mutex.Unlock()
 
 	// Announce the new client to all connected clients.
-	broadcast(fmt.Sprintf("%s has joined our chat...", client.name), "")
+	broadcast(fmt.Sprintf("\033[32m%s has joined our chat...\033[0m\n", client.name), "")
 
 	// Send the chat history to the newly connected client.
 	sendHistory(conn)
@@ -142,7 +142,7 @@ func handleConnection(conn net.Conn) {
 	mutex.Unlock()
 
 	// Announce the client's departure to all connected clients.
-	broadcast(fmt.Sprintf("%s has left our chat...", client.name), "")
+	broadcast(fmt.Sprintf("\033[31m%s has left our chat...\033[0m\n", client.name), "")
 }
 
 func isPrintableASCII(s string) bool {
@@ -221,12 +221,15 @@ func broadcast(message, senderName string) {
     }
 
     // Send message to all clients
-    for conn := range clients {  // Fixed: iterate over connections only
+    for conn := range clients {
+        // Write escape sequences to save cursor, clear line, and restore cursor to fix input line display
+        conn.Write([]byte("\033[s\033[2K\r")) // Clear line and move cursor.
         if conn == senderConn {
-            fmt.Fprintf(conn, "\033[1A\r\033[K%s\n", formatted)
+            fmt.Fprintf(conn, "%s\n", formatted)
         } else {
             fmt.Fprintln(conn, formatted)
         }
+        conn.Write([]byte("\033[u\033[B")) // Restore cursor and move down.
     }
 }
 // sendHistory sends the chat history to a newly connected client.
